@@ -80,7 +80,7 @@ class CameraOnSphere(blender_nerf_operator.BlenderNeRF_Operator):
                         scene.frame_set(anim_frame)
                         for cam_idx in range(scene.cos_nb_frames):
                             helper.sample_from_sphere(scene, camera_index=cam_idx)
-                            scene.view_layer.update()
+                            scene.view_layers[0].update()
 
                             filename = f"r_{cam_idx}_{anim_frame:04d}"
                             scene.render.filepath = os.path.join(output_train, filename)
