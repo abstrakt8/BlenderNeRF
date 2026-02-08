@@ -115,6 +115,46 @@ class BlenderNeRF_Operator(bpy.types.Operator):
 
         return camera_extr_dict
 
+    # camera extrinsics for COS (freeze at frame_start, loop camera positions)
+    def get_camera_extrinsics_cos(self, scene, camera):
+        initFrame = scene.frame_current
+        scene.frame_set(scene.frame_start)  # freeze animation at start frame
+
+        camera_extr_list = []
+        for cam_idx in range(scene.cos_nb_frames):
+            helper.sample_from_sphere(scene, camera_index=cam_idx)
+            scene.view_layers[0].update()
+
+            filename = f"r_{cam_idx:04d}"
+            frame_data = {
+                'file_path': os.path.join('train', filename),
+                'transform_matrix': self.listify_matrix(camera.matrix_world)
+            }
+            camera_extr_list.append(frame_data)
+
+        scene.frame_set(initFrame)
+        return camera_extr_list
+
+    # camera extrinsics for COS per-frame (freeze at anim_frame, loop camera positions)
+    def get_camera_extrinsics_cos_perframe(self, scene, camera, anim_frame):
+        initFrame = scene.frame_current
+        scene.frame_set(anim_frame)  # freeze animation at this frame
+
+        camera_extr_list = []
+        for cam_idx in range(scene.cos_nb_frames):
+            helper.sample_from_sphere(scene, camera_index=cam_idx)
+            scene.view_layers[0].update()
+
+            filename = f"r_{cam_idx:04d}"
+            frame_data = {
+                'file_path': os.path.join('train', filename),
+                'transform_matrix': self.listify_matrix(camera.matrix_world)
+            }
+            camera_extr_list.append(frame_data)
+
+        scene.frame_set(initFrame)
+        return camera_extr_list
+
     # camera extrinsics for 4DGS (all timestep x camera_view combinations)
     def get_camera_extrinsics_4dgs(self, scene, camera):
         initFrame = scene.frame_current
@@ -291,6 +331,11 @@ class BlenderNeRF_Operator(bpy.types.Operator):
             logdata['Lens'] = str(scene.focal) + ' mm'
             logdata['Seed'] = scene.seed
             logdata['Frames'] = scene.cos_nb_frames
+            logdata['4DGS (All Frames)'] = scene.cos_all_frames
+            if scene.cos_all_frames:
+                num_anim_frames = scene.frame_end - scene.frame_start + 1
+                logdata['Animation Frames'] = num_anim_frames
+                logdata['Total Renders'] = num_anim_frames * scene.cos_nb_frames
             logdata['Upper Views'] = scene.upper_views
             logdata['Outwards'] = scene.outwards
             logdata['Dataset Name'] = scene.cos_dataset_name

@@ -37,7 +37,7 @@ class CameraOnSphere(blender_nerf_operator.BlenderNeRF_Operator):
         os.makedirs(output_path, exist_ok=True)
 
         if scene.logs: self.save_log_file(scene, output_path, method='COS')
-        if scene.splats: self.save_splats_ply(scene, output_path)
+        if scene.splats and not scene.cos_all_frames: self.save_splats_ply(scene, output_path)
 
         # initial property might have changed since set_init_props update
         scene.init_output_path = scene.render.filepath
@@ -62,27 +62,37 @@ class CameraOnSphere(blender_nerf_operator.BlenderNeRF_Operator):
             scene.camera = sphere_camera
 
             if scene.cos_all_frames:
-                # 4DGS mode: generate extrinsics for all (timestep, camera) pairs
-                sphere_output_data['frames'] = self.get_camera_extrinsics_4dgs(scene, sphere_camera)
-                self.save_json(output_path, 'transforms_train.json', sphere_output_data)
+                # 4DGS per-frame mode: one 3DGS dataset per animation frame
+                frame_start = scene.frame_start
+                frame_end = scene.frame_end
+                total = (frame_end - frame_start + 1) * scene.cos_nb_frames
+                count = 0
 
-                # 4DGS: render stills in nested loop
-                if scene.render_frames:
-                    output_train = os.path.join(output_path, 'train')
-                    os.makedirs(output_train, exist_ok=True)
+                for anim_frame in range(frame_start, frame_end + 1):
+                    frame_dir = os.path.join(output_path, f"frame_{anim_frame:04d}")
+                    os.makedirs(frame_dir, exist_ok=True)
 
-                    frame_start = scene.frame_start
-                    frame_end = scene.frame_end
-                    total = (frame_end - frame_start + 1) * scene.cos_nb_frames
-                    count = 0
+                    # per-frame JSON (static 3DGS dataset frozen at this animation frame)
+                    frame_output_data = dict(sphere_output_data)
+                    frame_output_data['frames'] = self.get_camera_extrinsics_cos_perframe(scene, sphere_camera, anim_frame)
+                    self.save_json(frame_dir, 'transforms_train.json', frame_output_data)
 
-                    for anim_frame in range(frame_start, frame_end + 1):
+                    # per-frame splats
+                    if scene.splats:
+                        scene.frame_set(anim_frame)
+                        self.save_splats_ply(scene, frame_dir)
+
+                    # render stills for this animation frame
+                    if scene.render_frames:
+                        output_train = os.path.join(frame_dir, 'train')
+                        os.makedirs(output_train, exist_ok=True)
+
                         scene.frame_set(anim_frame)
                         for cam_idx in range(scene.cos_nb_frames):
                             helper.sample_from_sphere(scene, camera_index=cam_idx)
                             scene.view_layers[0].update()
 
-                            filename = f"r_{cam_idx}_{anim_frame:04d}"
+                            filename = f"r_{cam_idx:04d}"
                             scene.render.filepath = os.path.join(output_train, filename)
                             bpy.ops.render.render(write_still=True)
 
@@ -90,33 +100,40 @@ class CameraOnSphere(blender_nerf_operator.BlenderNeRF_Operator):
                             print(f"BlenderNeRF 4DGS: Rendered {count}/{total}")
 
             else:
-                # standard COS mode
-                sphere_output_data['frames'] = self.get_camera_extrinsics(scene, sphere_camera, mode='TRAIN', method='COS')
+                # standard COS mode: freeze at frame_start, render stills per camera position
+                sphere_output_data['frames'] = self.get_camera_extrinsics_cos(scene, sphere_camera)
                 self.save_json(output_path, 'transforms_train.json', sphere_output_data)
 
-                # rendering
                 if scene.render_frames:
                     output_train = os.path.join(output_path, 'train')
                     os.makedirs(output_train, exist_ok=True)
-                    scene.rendering = (False, False, True)
-                    scene.frame_end = scene.frame_start + scene.cos_nb_frames - 1 # update end frame
-                    scene.render.filepath = os.path.join(output_train, '') # training frames path
-                    bpy.ops.render.render('INVOKE_DEFAULT', animation=True, write_still=True) # render scene
 
-        # if frames are rendered, the below code is executed by the handler function
-        if not any(scene.rendering):
-            # reset camera settings
-            if not scene.init_camera_exists: helper.delete_camera(scene, CAMERA_NAME)
-            if not scene.init_sphere_exists:
-                objects = bpy.data.objects
-                objects.remove(objects[EMPTY_NAME], do_unlink=True)
-                scene.show_sphere = False
-                scene.sphere_exists = False
+                    scene.frame_set(scene.frame_start)
+                    for cam_idx in range(scene.cos_nb_frames):
+                        helper.sample_from_sphere(scene, camera_index=cam_idx)
+                        scene.view_layers[0].update()
 
-            scene.camera = scene.init_active_camera
+                        filename = f"r_{cam_idx:04d}"
+                        scene.render.filepath = os.path.join(output_train, filename)
+                        bpy.ops.render.render(write_still=True)
 
-            # compress dataset and remove folder (only keep zip)
-            shutil.make_archive(output_path, 'zip', output_path) # output filename = output_path
-            shutil.rmtree(output_path)
+                        print(f"BlenderNeRF COS: Rendered {cam_idx + 1}/{scene.cos_nb_frames}")
+
+        # cleanup (runs inline since we no longer use animation rendering)
+        scene.render.filepath = scene.init_output_path
+
+        # reset camera settings
+        if not scene.init_camera_exists: helper.delete_camera(scene, CAMERA_NAME)
+        if not scene.init_sphere_exists:
+            objects = bpy.data.objects
+            objects.remove(objects[EMPTY_NAME], do_unlink=True)
+            scene.show_sphere = False
+            scene.sphere_exists = False
+
+        scene.camera = scene.init_active_camera
+
+        # compress dataset and remove folder (only keep zip)
+        shutil.make_archive(output_path, 'zip', output_path) # output filename = output_path
+        shutil.rmtree(output_path)
 
         return {'FINISHED'}
