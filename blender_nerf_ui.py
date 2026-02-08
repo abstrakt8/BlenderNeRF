@@ -8,7 +8,7 @@ class BlenderNeRF_UI(bpy.types.Panel):
     bl_label = 'BlenderNeRF shared UI'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'BlenderNeRF'
+    bl_category = 'BlenderNeRF4D'
 
     def draw(self, context):
         layout = self.layout

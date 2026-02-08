@@ -8,7 +8,7 @@ class TTC_UI(bpy.types.Panel):
     bl_label = 'Train and Test Cameras TTC'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'BlenderNeRF'
+    bl_category = 'BlenderNeRF4D'
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):

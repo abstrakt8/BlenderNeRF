@@ -4,7 +4,7 @@ from . import helper, blender_nerf_ui, sof_ui, ttc_ui, cos_ui, sof_operator, ttc
 
 # blender info
 bl_info = {
-    'name': 'BlenderNeRF',
+    'name': 'BlenderNeRF4D',
     'description': 'Easy NeRF synthetic dataset creation within Blender',
     'author': 'Maxime Raafat',
     'version': (6, 0, 0),
