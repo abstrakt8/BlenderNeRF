@@ -63,6 +63,10 @@ class BlenderNeRF_Operator(bpy.types.Operator):
             s_u = f_in_mm / sensor_size_in_mm * width_res_in_px / pixel_aspect_ratio
             s_v = f_in_mm / sensor_size_in_mm * width_res_in_px
 
+        # recompute FOV angles from pixel focal lengths to match render resolution
+        camera_angle_x = 2 * math.atan(width_res_in_px / (2 * s_u))
+        camera_angle_y = 2 * math.atan(height_res_in_px / (2 * s_v))
+
         camera_intr_dict = {
             'camera_angle_x': camera_angle_x,
             'camera_angle_y': camera_angle_y,
