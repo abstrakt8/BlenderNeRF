@@ -84,8 +84,9 @@ def delete_camera(scene, name):
             bpy.data.cameras.remove(block)
 
 # non uniform sampling when stretched or squeezed sphere
-def sample_from_sphere(scene):
-    seed = (2654435761 * (scene.seed + 1)) ^ (805459861 * (scene.frame_current + 1))
+def sample_from_sphere(scene, camera_index=None):
+    frame = camera_index if camera_index is not None else scene.frame_current
+    seed = (2654435761 * (scene.seed + 1)) ^ (805459861 * (frame + 1))
     rng = random.Random(seed) # random number generator
 
     # sample random angles

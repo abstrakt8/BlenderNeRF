@@ -3,6 +3,7 @@ import math
 import json
 import datetime
 import bpy
+from . import helper
 
 
 # global addon script variables
@@ -113,6 +114,33 @@ class BlenderNeRF_Operator(bpy.types.Operator):
         scene.frame_set(initFrame) # set back to initial frame
 
         return camera_extr_dict
+
+    # camera extrinsics for 4DGS (all timestep x camera_view combinations)
+    def get_camera_extrinsics_4dgs(self, scene, camera):
+        initFrame = scene.frame_current
+        frame_start = scene.frame_start
+        frame_end = scene.frame_end
+        num_anim_frames = frame_end - frame_start + 1
+
+        camera_extr_list = []
+        for anim_frame in range(frame_start, frame_end + 1):
+            scene.frame_set(anim_frame)
+            time = (anim_frame - frame_start) / max(num_anim_frames - 1, 1)
+
+            for cam_idx in range(scene.cos_nb_frames):
+                helper.sample_from_sphere(scene, camera_index=cam_idx)
+                scene.view_layer.update()
+
+                filename = f"r_{cam_idx}_{anim_frame:04d}"
+                frame_data = {
+                    'file_path': os.path.join('train', filename),
+                    'time': time,
+                    'transform_matrix': self.listify_matrix(camera.matrix_world)
+                }
+                camera_extr_list.append(frame_data)
+
+        scene.frame_set(initFrame)
+        return camera_extr_list
 
     # export vertex colors for each visible mesh
     def save_splats_ply(self, scene, directory):
