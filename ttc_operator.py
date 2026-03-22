@@ -53,7 +53,7 @@ class TrainTestCameras(blender_nerf_operator.BlenderNeRF_Operator):
 
             # rendering
             if scene.render_frames:
-                output_train = os.path.join(output_path, 'train')
+                output_train = os.path.join(output_path, self.get_train_dirname(scene))
                 os.makedirs(output_train, exist_ok=True)
                 scene.rendering = (False, True, False)
                 scene.frame_end = scene.frame_start + scene.ttc_nb_frames - 1 # update end frame

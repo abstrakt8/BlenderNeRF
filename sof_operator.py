@@ -51,7 +51,7 @@ class SubsetOfFrames(blender_nerf_operator.BlenderNeRF_Operator):
 
             # rendering
             if scene.render_frames:
-                output_train = os.path.join(output_path, 'train')
+                output_train = os.path.join(output_path, self.get_train_dirname(scene))
                 os.makedirs(output_train, exist_ok=True)
                 scene.rendering = (True, False, False)
                 scene.frame_step = scene.train_frame_steps # update frame step

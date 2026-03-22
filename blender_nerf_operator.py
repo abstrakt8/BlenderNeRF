@@ -6,7 +6,6 @@ import bpy
 
 
 # global addon script variables
-OUTPUT_TRAIN = 'train'
 OUTPUT_TEST = 'test'
 CAMERA_NAME = 'BlenderNeRF Camera'
 TMP_VERTEX_COLORS = 'blendernerf_vertex_colors_tmp'
@@ -14,6 +13,10 @@ TMP_VERTEX_COLORS = 'blendernerf_vertex_colors_tmp'
 
 # blender nerf operator parent class
 class BlenderNeRF_Operator(bpy.types.Operator):
+
+    # train directory name based on LFS toggle
+    def get_train_dirname(self, scene):
+        return 'images' if scene.lfs else 'train'
 
     # camera intrinsics
     def get_camera_intrinsics(self, scene, camera):
@@ -101,7 +104,7 @@ class BlenderNeRF_Operator(bpy.types.Operator):
         for frame in range(scene.frame_start, end + 1, step):
             scene.frame_set(frame)
             filename = os.path.basename( scene.render.frame_path(frame=frame) )
-            filedir = OUTPUT_TRAIN * (mode == 'TRAIN') + OUTPUT_TEST * (mode == 'TEST')
+            filedir = self.get_train_dirname(scene) * (mode == 'TRAIN') + OUTPUT_TEST * (mode == 'TEST')
 
             frame_data = {
                 'file_path': os.path.join(filedir, os.path.splitext(filename)[0] if scene.splats else filename),

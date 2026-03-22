@@ -47,6 +47,11 @@ class BlenderNeRF_UI(bpy.types.Panel):
             row.prop(scene, 'nerf', toggle=True, text='NGP', invert_checkbox=True)
             row.prop(scene, 'nerf', toggle=True)
 
+            layout.label(text='Output Folder')
+            row = layout.row(align=True)
+            row.prop(scene, 'lfs', toggle=True, text='Standard', invert_checkbox=True)
+            row.prop(scene, 'lfs', toggle=True, text='LFS')
+
             layout.separator()
             layout.use_property_split = True
             layout.prop(scene, 'save_path')
